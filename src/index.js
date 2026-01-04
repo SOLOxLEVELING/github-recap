@@ -10,6 +10,7 @@
 
 import chalk from 'chalk'
 import { testAuthentication } from './auth/githubAuth.js'
+import { fetchAllRepos } from './data/fetchRepos.js'
 
 /**
  * Main function that runs the GitHub Recap application.
@@ -28,9 +29,46 @@ async function main() {
     // Display success message with username
     console.log(
       chalk.green('✅ Authentication successful!\n') +
-        chalk.white(`   Logged in as: ${chalk.bold.cyan(username)}\n`) +
-        chalk.gray('   Ready to fetch your GitHub data...\n')
+        chalk.white(`   Logged in as: ${chalk.bold.cyan(username)}\n`)
     )
+
+    // Fetch all repositories
+    console.log(chalk.yellow('📦 Fetching repositories...\n'))
+
+    const repos = await fetchAllRepos({
+      publicOnly: false,
+      excludeRepos: [],
+    })
+
+    // Display repository count and sample
+    console.log(
+      chalk.green(`✅ Found ${chalk.bold(repos.length)} repositories!\n`)
+    )
+
+    // Show first 5 repositories as a test
+    if (repos.length > 0) {
+      console.log(chalk.white('📋 Sample repositories:\n'))
+      repos.slice(0, 5).forEach((repo, index) => {
+        const language = repo.language ? chalk.gray(` (${repo.language})`) : ''
+        const visibility = repo.private
+          ? chalk.red(' [private]')
+          : chalk.green(' [public]')
+        console.log(
+          `   ${index + 1}. ${chalk.blue.bold(
+            repo.full_name
+          )}${language}${visibility}`
+        )
+      })
+      if (repos.length > 5) {
+        console.log(
+          chalk.gray(`\n   ... and ${repos.length - 5} more repositories\n`)
+        )
+      } else {
+        console.log() // Add spacing
+      }
+    } else {
+      console.log(chalk.yellow('   No repositories found.\n'))
+    }
   } catch (error) {
     // Handle errors gracefully with red color for visibility
     console.error(chalk.red.bold('\n❌ Error:\n'))
