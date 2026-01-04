@@ -46,12 +46,15 @@ export async function fetchAllRepos(options = {}) {
     // 3. Makes additional requests for remaining pages
     // 4. Combines all results into a single array
     // 5. Handles rate limiting and retries
-    const allRepos = await octokit.paginate(octokit.rest.repos.listForAuthenticatedUser, {
-      // Request all fields we might need
-      per_page: 100, // Maximum allowed by GitHub API
-      sort: 'created', // Sort by creation date (oldest first)
-      direction: 'asc', // Ascending order
-    })
+    const allRepos = await octokit.paginate(
+      octokit.rest.repos.listForAuthenticatedUser,
+      {
+        // Request all fields we might need
+        per_page: 100, // Maximum allowed by GitHub API
+        sort: 'created', // Sort by creation date (oldest first)
+        direction: 'asc', // Ascending order
+      }
+    )
 
     // Filtering logic:
     // 1. First, filter by publicOnly if specified
@@ -63,11 +66,34 @@ export async function fetchAllRepos(options = {}) {
 
     // 2. Then, exclude specific repositories if provided
     //    - Useful for filtering out forks, archived repos, or test repos
-    //    - excludeRepos should contain full names like 'username/repo-name'
+    //    - Matching is flexible: can match by full_name, repo name, or partial match
+    //    - Examples:
+    //      - "username/repo-name" matches exact full_name
+    //      - "repo-name" matches any repo with that name (regardless of owner)
+    //      - "cv" matches any repo containing "cv" in the name
     if (excludeRepos.length > 0) {
-      filteredRepos = filteredRepos.filter(
-        (repo) => !excludeRepos.includes(repo.full_name)
-      )
+      filteredRepos = filteredRepos.filter((repo) => {
+        // Check if this repo should be excluded
+        // A repo is excluded if ANY of the exclude patterns match:
+        return !excludeRepos.some((excludePattern) => {
+          // 1. Exact full_name match: "username/repo-name"
+          if (repo.full_name === excludePattern) {
+            return true
+          }
+          // 2. Exact repo name match: "repo-name" (matches any owner)
+          if (repo.name === excludePattern) {
+            return true
+          }
+          // 3. Partial match: "cv" matches "SOLOxLEVELING/cv" or "my-cv-project"
+          if (
+            repo.full_name.includes(excludePattern) ||
+            repo.name.includes(excludePattern)
+          ) {
+            return true
+          }
+          return false
+        })
+      })
     }
 
     // Extract only the fields we need for the recap
