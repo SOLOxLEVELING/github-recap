@@ -10,10 +10,21 @@
 
 import chalk from 'chalk'
 import boxen from 'boxen'
+import { format, parseISO } from 'date-fns'
 import { testAuthentication } from './auth/githubAuth.js'
 import { fetchAllRepos } from './data/fetchRepos.js'
 import { collectAllCommits } from './data/dataCollector.js'
 import { parseOptions } from './utils/cli.js'
+import {
+  calculateTotalCommits,
+  getTopRepositories,
+  getMostActiveDay,
+  getMostActiveMonth,
+  calculateLongestStreak,
+  getCommitsByDayOfWeek,
+  getLanguageBreakdown,
+} from './stats/statsCalculator.js'
+import { getTopWords, getCommitMessageStats } from './stats/messageAnalyzer.js'
 
 // Parse CLI options
 const options = parseOptions()
@@ -158,56 +169,184 @@ async function main() {
           repoList: [targetRepo], // Only process this one repo
         })
 
-        // Display summary
-        console.log('\n') // Add spacing before summary box
+        // Calculate statistics for single repo
+        console.log(chalk.yellow('\n📊 Calculating statistics...\n'))
 
-        const summaryLines = [
-          chalk.cyan.bold('📊 Collection Summary\n'),
+        const repoLanguages = {}
+        repoLanguages[targetRepo.full_name] = targetRepo.language || 'Unknown'
+
+        const totalCommits = calculateTotalCommits(repoCommits)
+        const mostActiveDay = getMostActiveDay(repoCommits)
+        const mostActiveMonth = getMostActiveMonth(repoCommits)
+        const longestStreak = calculateLongestStreak(repoCommits)
+        const commitsByDay = getCommitsByDayOfWeek(repoCommits)
+        const topWords = getTopWords(repoCommits, 10)
+        const messageStats = getCommitMessageStats(repoCommits)
+
+        // Get date range
+        let dateRange = 'N/A'
+        if (repoCommits.length > 0) {
+          const dates = repoCommits
+            .map((c) => parseISO(c.date))
+            .sort((a, b) => a - b)
+          const firstDate = format(dates[0], 'MMM d, yyyy')
+          const lastDate = format(dates[dates.length - 1], 'MMM d, yyyy')
+          dateRange = `${firstDate} - ${lastDate}`
+        }
+
+        // Display statistics
+        console.log('\n')
+
+        // Overview
+        const overviewLines = [
+          chalk.cyan.bold('📈 Overview\n'),
           chalk.white(`Repository: ${chalk.blue.bold(targetRepo.full_name)}`),
           chalk.white(
-            `Total Commits Found: ${chalk.green.bold(
-              repoCommits.length.toLocaleString()
-            )}`
+            `Total Commits: ${chalk.green.bold(totalCommits.toLocaleString())}`
           ),
-          '',
-          chalk.yellow.bold('Sample Commits:'),
+          chalk.white(`Date Range: ${chalk.green.bold(dateRange)}`),
         ]
 
-        // Add sample commits
-        if (repoCommits.length > 0) {
-          repoCommits.slice(0, 3).forEach((commit, index) => {
-            const message =
-              commit.message.length > 50
-                ? commit.message.substring(0, 47) + '...'
-                : commit.message.split('\n')[0]
-            summaryLines.push(
+        console.log(
+          boxen(overviewLines.join('\n'), {
+            title: chalk.cyan.bold('GitHub Recap Statistics'),
+            titleAlignment: 'center',
+            padding: 1,
+            margin: { top: 0, bottom: 1 },
+            borderStyle: 'round',
+            borderColor: 'cyan',
+          })
+        )
+
+        // Activity Patterns
+        const activityLines = [chalk.cyan.bold('📅 Activity Patterns\n')]
+
+        if (mostActiveDay) {
+          activityLines.push(
+            chalk.white(
+              `Most Active Day: ${chalk.yellow.bold(
+                mostActiveDay.dayName
+              )} (${chalk.green.bold(
+                format(parseISO(mostActiveDay.date), 'MMM d, yyyy')
+              )}) with ${chalk.green.bold(mostActiveDay.count)} commits`
+            )
+          )
+        }
+
+        if (mostActiveMonth) {
+          activityLines.push(
+            chalk.white(
+              `Most Active Month: ${chalk.yellow.bold(
+                mostActiveMonth.monthName
+              )} with ${chalk.green.bold(mostActiveMonth.count)} commits`
+            )
+          )
+        }
+
+        if (longestStreak) {
+          activityLines.push(
+            chalk.white(
+              `Longest Streak: ${chalk.green.bold(
+                longestStreak.days
+              )} days (${chalk.yellow.bold(
+                format(parseISO(longestStreak.startDate), 'MMM d')
+              )} - ${chalk.yellow.bold(
+                format(parseISO(longestStreak.endDate), 'MMM d')
+              )})`
+            )
+          )
+        }
+
+        activityLines.push('')
+        activityLines.push(chalk.yellow.bold('Commits by Day of Week:'))
+
+        const maxDayCount = Math.max(...commitsByDay.map((d) => d.count), 1)
+        commitsByDay.forEach(({ day, count }) => {
+          const barLength = Math.round((count / maxDayCount) * 20)
+          const bar = '█'.repeat(barLength)
+          const percentage =
+            totalCommits > 0 ? ((count / totalCommits) * 100).toFixed(1) : 0
+          activityLines.push(
+            chalk.white(
+              `  ${day.padEnd(9)} ${chalk.green(
+                bar.padEnd(20)
+              )} ${chalk.green.bold(count)} (${percentage}%)`
+            )
+          )
+        })
+
+        console.log(
+          boxen(activityLines.join('\n'), {
+            padding: 1,
+            margin: { top: 0, bottom: 1 },
+            borderStyle: 'round',
+            borderColor: 'blue',
+          })
+        )
+
+        // Top Words
+        if (topWords.length > 0) {
+          const wordsLines = [
+            chalk.cyan.bold('💬 Top Words in Commit Messages\n'),
+          ]
+
+          topWords.forEach((item, index) => {
+            wordsLines.push(
               chalk.white(
-                `  ${index + 1}. ${chalk.blue(
-                  commit.sha.substring(0, 7)
-                )} ${message}`
+                `  ${(index + 1).toString().padStart(2)}. ${chalk.yellow.bold(
+                  item.word.padEnd(15)
+                )} ${chalk.green.bold(item.count)} times`
               )
             )
           })
-          if (repoCommits.length > 3) {
-            summaryLines.push(
-              chalk.gray(`  ... and ${repoCommits.length - 3} more commits`)
-            )
-          }
-        } else {
-          summaryLines.push(chalk.gray('  No commits found'))
+
+          console.log(
+            boxen(wordsLines.join('\n'), {
+              padding: 1,
+              margin: { top: 0, bottom: 1 },
+              borderStyle: 'round',
+              borderColor: 'magenta',
+            })
+          )
         }
 
-        const summaryBox = boxen(summaryLines.join('\n'), {
-          title: chalk.cyan.bold('GitHub Recap - Data Collection Complete'),
-          titleAlignment: 'center',
-          padding: 1,
-          margin: 1,
-          borderStyle: 'round',
-          borderColor: 'cyan',
-        })
+        // Commit Insights
+        const insightsLines = [
+          chalk.cyan.bold('💡 Commit Insights\n'),
+          chalk.white(
+            `Average Message Length: ${chalk.green.bold(
+              messageStats.avgLength
+            )} words`
+          ),
+        ]
 
-        console.log(summaryBox)
-        console.log() // Add spacing after box
+        if (messageStats.topFirstWords.length > 0) {
+          const topFirst = messageStats.topFirstWords[0]
+          insightsLines.push('')
+          insightsLines.push(
+            chalk.white(
+              `Most Common First Word: ${chalk.yellow.bold(
+                `"${topFirst.word}"`
+              )} (${chalk.green.bold(topFirst.count)} times)`
+            )
+          )
+          insightsLines.push(
+            chalk.gray(
+              `   💬 You said "${topFirst.word}" ${topFirst.count} times!`
+            )
+          )
+        }
+
+        console.log(
+          boxen(insightsLines.join('\n'), {
+            padding: 1,
+            margin: { top: 0, bottom: 1 },
+            borderStyle: 'round',
+            borderColor: 'yellow',
+          })
+        )
+
+        console.log() // Final spacing
         return // Exit early after showing summary
       } else if (matches.length > 1) {
         // Multiple matches found - show list and ask for specificity
@@ -285,73 +424,238 @@ async function main() {
         excludeRepos: options.exclude || [],
       })
 
-      // Get repos list for summary (we need to fetch them again for the summary)
+      // Get repos list for statistics (we need repo metadata for language breakdown)
       repos = await fetchAllRepos({
         publicOnly: options.publicOnly || false,
         excludeRepos: options.exclude || [],
       })
 
-      // Calculate commits per repository for summary
-      const commitsByRepo = {}
-      allCommits.forEach((commit) => {
-        if (!commitsByRepo[commit.repo]) {
-          commitsByRepo[commit.repo] = 0
-        }
-        commitsByRepo[commit.repo]++
+      // Create repo language map for language breakdown
+      const repoLanguages = {}
+      repos.forEach((repo) => {
+        repoLanguages[repo.full_name] = repo.language || 'Unknown'
       })
 
-      // Sort repos by commit count (descending)
-      const reposByCommits = Object.entries(commitsByRepo)
-        .map(([repoName, count]) => ({ repoName, count }))
-        .sort((a, b) => b.count - a.count)
+      // Calculate all statistics
+      console.log(chalk.yellow('\n📊 Calculating statistics...\n'))
 
-      // Display final summary with boxen
-      console.log('\n') // Add spacing before summary box
+      const totalCommits = calculateTotalCommits(allCommits)
+      const topRepos = getTopRepositories(allCommits, 5)
+      const mostActiveDay = getMostActiveDay(allCommits)
+      const mostActiveMonth = getMostActiveMonth(allCommits)
+      const longestStreak = calculateLongestStreak(allCommits)
+      const commitsByDay = getCommitsByDayOfWeek(allCommits)
+      const languageBreakdown = getLanguageBreakdown(allCommits, repoLanguages)
+      const topWords = getTopWords(allCommits, 10)
+      const messageStats = getCommitMessageStats(allCommits)
 
-      const summaryLines = [
-        chalk.cyan.bold('📊 Collection Summary\n'),
+      // Get date range
+      let dateRange = 'N/A'
+      if (allCommits.length > 0) {
+        const dates = allCommits
+          .map((c) => parseISO(c.date))
+          .sort((a, b) => a - b)
+        const firstDate = format(dates[0], 'MMM d, yyyy')
+        const lastDate = format(dates[dates.length - 1], 'MMM d, yyyy')
+        dateRange = `${firstDate} - ${lastDate}`
+      }
+
+      // Display statistics in organized sections
+      console.log('\n')
+
+      // Section 1: Overview
+      const overviewLines = [
+        chalk.cyan.bold('📈 Overview\n'),
         chalk.white(
-          `Total Repositories Processed: ${chalk.green.bold(repos.length)}`
+          `Total Commits: ${chalk.green.bold(totalCommits.toLocaleString())}`
         ),
-        chalk.white(
-          `Total Commits Found: ${chalk.green.bold(
-            allCommits.length.toLocaleString()
-          )}`
-        ),
-        '',
-        chalk.yellow.bold('Top Repositories by Commits:'),
+        chalk.white(`Total Repositories: ${chalk.green.bold(repos.length)}`),
+        chalk.white(`Date Range: ${chalk.green.bold(dateRange)}`),
       ]
 
-      // Add top 5 repos by commit count
-      const topRepos = reposByCommits.slice(0, 5)
-      if (topRepos.length > 0) {
-        topRepos.forEach((item, index) => {
-          const percentage = ((item.count / allCommits.length) * 100).toFixed(1)
-          summaryLines.push(
+      console.log(
+        boxen(overviewLines.join('\n'), {
+          title: chalk.cyan.bold('GitHub Recap Statistics'),
+          titleAlignment: 'center',
+          padding: 1,
+          margin: { top: 0, bottom: 1 },
+          borderStyle: 'round',
+          borderColor: 'cyan',
+        })
+      )
+
+      // Section 2: Activity Patterns
+      const activityLines = [chalk.cyan.bold('📅 Activity Patterns\n')]
+
+      if (mostActiveDay) {
+        activityLines.push(
+          chalk.white(
+            `Most Active Day: ${chalk.yellow.bold(
+              mostActiveDay.dayName
+            )} (${chalk.green.bold(
+              format(parseISO(mostActiveDay.date), 'MMM d, yyyy')
+            )}) with ${chalk.green.bold(mostActiveDay.count)} commits`
+          )
+        )
+      }
+
+      if (mostActiveMonth) {
+        activityLines.push(
+          chalk.white(
+            `Most Active Month: ${chalk.yellow.bold(
+              mostActiveMonth.monthName
+            )} with ${chalk.green.bold(mostActiveMonth.count)} commits`
+          )
+        )
+      }
+
+      if (longestStreak) {
+        activityLines.push(
+          chalk.white(
+            `Longest Streak: ${chalk.green.bold(
+              longestStreak.days
+            )} days (${chalk.yellow.bold(
+              format(parseISO(longestStreak.startDate), 'MMM d')
+            )} - ${chalk.yellow.bold(
+              format(parseISO(longestStreak.endDate), 'MMM d')
+            )})`
+          )
+        )
+      }
+
+      activityLines.push('')
+      activityLines.push(chalk.yellow.bold('Commits by Day of Week:'))
+
+      // Create simple bar chart for day of week
+      const maxDayCount = Math.max(...commitsByDay.map((d) => d.count), 1)
+      commitsByDay.forEach(({ day, count }) => {
+        const barLength = Math.round((count / maxDayCount) * 20)
+        const bar = '█'.repeat(barLength)
+        const percentage =
+          totalCommits > 0 ? ((count / totalCommits) * 100).toFixed(1) : 0
+        activityLines.push(
+          chalk.white(
+            `  ${day.padEnd(9)} ${chalk.green(
+              bar.padEnd(20)
+            )} ${chalk.green.bold(count)} (${percentage}%)`
+          )
+        )
+      })
+
+      console.log(
+        boxen(activityLines.join('\n'), {
+          padding: 1,
+          margin: { top: 0, bottom: 1 },
+          borderStyle: 'round',
+          borderColor: 'blue',
+        })
+      )
+
+      // Section 3: Top Words
+      if (topWords.length > 0) {
+        const wordsLines = [
+          chalk.cyan.bold('💬 Top Words in Commit Messages\n'),
+        ]
+
+        topWords.forEach((item, index) => {
+          wordsLines.push(
             chalk.white(
-              `  ${index + 1}. ${chalk.blue.bold(
-                item.repoName
-              )}: ${chalk.green.bold(
-                item.count.toLocaleString()
-              )} commits (${percentage}%)`
+              `  ${(index + 1).toString().padStart(2)}. ${chalk.yellow.bold(
+                item.word.padEnd(15)
+              )} ${chalk.green.bold(item.count)} times`
             )
           )
         })
-      } else {
-        summaryLines.push(chalk.gray('  No commits found in any repository'))
+
+        console.log(
+          boxen(wordsLines.join('\n'), {
+            padding: 1,
+            margin: { top: 0, bottom: 1 },
+            borderStyle: 'round',
+            borderColor: 'magenta',
+          })
+        )
       }
 
-      const summaryBox = boxen(summaryLines.join('\n'), {
-        title: chalk.cyan.bold('GitHub Recap - Data Collection Complete'),
-        titleAlignment: 'center',
-        padding: 1,
-        margin: 1,
-        borderStyle: 'round',
-        borderColor: 'cyan',
-      })
+      // Section 4: Commit Insights
+      const insightsLines = [
+        chalk.cyan.bold('💡 Commit Insights\n'),
+        chalk.white(
+          `Average Message Length: ${chalk.green.bold(
+            messageStats.avgLength
+          )} words`
+        ),
+      ]
 
-      console.log(summaryBox)
-      console.log() // Add spacing after box
+      if (messageStats.shortestMsg) {
+        insightsLines.push(
+          chalk.white(
+            `Shortest Message: ${chalk.gray(`"${messageStats.shortestMsg}"`)}`
+          )
+        )
+      }
+
+      if (messageStats.longestMsg) {
+        insightsLines.push(
+          chalk.white(
+            `Longest Message: ${chalk.gray(`"${messageStats.longestMsg}"`)}`
+          )
+        )
+      }
+
+      if (messageStats.topFirstWords.length > 0) {
+        const topFirst = messageStats.topFirstWords[0]
+        insightsLines.push('')
+        insightsLines.push(
+          chalk.white(
+            `Most Common First Word: ${chalk.yellow.bold(
+              `"${topFirst.word}"`
+            )} (${chalk.green.bold(topFirst.count)} times)`
+          )
+        )
+        insightsLines.push(
+          chalk.gray(
+            `   💬 You said "${topFirst.word}" ${topFirst.count} times!`
+          )
+        )
+      }
+
+      console.log(
+        boxen(insightsLines.join('\n'), {
+          padding: 1,
+          margin: { top: 0, bottom: 1 },
+          borderStyle: 'round',
+          borderColor: 'yellow',
+        })
+      )
+
+      // Top Repositories Summary
+      if (topRepos.length > 0) {
+        const reposLines = [chalk.cyan.bold('🏆 Top Repositories\n')]
+
+        topRepos.forEach((item, index) => {
+          reposLines.push(
+            chalk.white(
+              `  ${index + 1}. ${chalk.blue.bold(
+                item.repo.padEnd(40)
+              )} ${chalk.green.bold(item.count.toLocaleString())} commits (${
+                item.percentage
+              }%)`
+            )
+          )
+        })
+
+        console.log(
+          boxen(reposLines.join('\n'), {
+            padding: 1,
+            margin: { top: 0, bottom: 1 },
+            borderStyle: 'round',
+            borderColor: 'green',
+          })
+        )
+      }
+
+      console.log() // Final spacing
     }
   } catch (error) {
     // Handle errors gracefully with red color for visibility
