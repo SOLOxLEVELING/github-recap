@@ -19,6 +19,7 @@
     "commander": "^14.0.2",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
+    "figlet": "^1.9.4",
     "ink": "^6.6.0",
     "ink-spinner": "^5.0.0",
     "octokit": "^5.0.5"

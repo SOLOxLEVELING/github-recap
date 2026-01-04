@@ -8,13 +8,17 @@
  * statistics calculation, and UI rendering to display the user's GitHub year in review.
  */
 
+import React from 'react'
 import chalk from 'chalk'
 import boxen from 'boxen'
+import { render } from 'ink'
 import { format, parseISO } from 'date-fns'
 import { testAuthentication } from './auth/githubAuth.js'
 import { fetchAllRepos } from './data/fetchRepos.js'
 import { collectAllCommits } from './data/dataCollector.js'
 import { parseOptions } from './utils/cli.js'
+import { RecapScreen } from './ui/RecapScreen.js'
+import { saveRecapToFile, saveRecapAsJSON } from './utils/saveRecap.js'
 import {
   calculateTotalCommits,
   getTopRepositories,
@@ -176,12 +180,54 @@ async function main() {
         repoLanguages[targetRepo.full_name] = targetRepo.language || 'Unknown'
 
         const totalCommits = calculateTotalCommits(repoCommits)
+        const topRepos = getTopRepositories(repoCommits, 5)
         const mostActiveDay = getMostActiveDay(repoCommits)
         const mostActiveMonth = getMostActiveMonth(repoCommits)
         const longestStreak = calculateLongestStreak(repoCommits)
         const commitsByDay = getCommitsByDayOfWeek(repoCommits)
         const topWords = getTopWords(repoCommits, 10)
         const messageStats = getCommitMessageStats(repoCommits)
+
+        // Prepare stats object for RecapScreen
+        const recapStats = {
+          totalCommits,
+          totalRepos: 1,
+          topRepos,
+          mostActiveDay,
+          mostActiveMonth,
+          longestStreak,
+          commitsByDay,
+          topWords,
+          messageStats,
+        }
+
+        // Render animated RecapScreen
+        console.log('\n')
+        const { unmount: unmountRecap } = render(
+          React.createElement(RecapScreen, {
+            stats: recapStats,
+            year: targetYear,
+            noAnimation: options.noAnimation || false,
+            onSave: async (stats, year) => {
+              try {
+                const txtPath = await saveRecapToFile(stats, year)
+                const jsonPath = await saveRecapAsJSON(stats, year)
+                console.log(chalk.green(`\n✅ Recap saved to:`))
+                console.log(chalk.cyan(`   ${txtPath}`))
+                console.log(chalk.cyan(`   ${jsonPath}\n`))
+              } catch (error) {
+                console.error(
+                  chalk.red(`\n❌ Error saving recap: ${error.message}\n`)
+                )
+              }
+            },
+            onQuit: () => {
+              unmountRecap()
+              process.exit(0)
+            },
+          }),
+          { exitOnCtrlC: true }
+        )
 
         // Get date range
         let dateRange = 'N/A'
@@ -459,6 +505,54 @@ async function main() {
         const lastDate = format(dates[dates.length - 1], 'MMM d, yyyy')
         dateRange = `${firstDate} - ${lastDate}`
       }
+
+      // Prepare stats object for RecapScreen
+      const recapStats = {
+        totalCommits,
+        totalRepos: repos.length,
+        topRepos,
+        mostActiveDay,
+        mostActiveMonth,
+        longestStreak,
+        commitsByDay,
+        topWords,
+        messageStats,
+      }
+
+      // Render animated RecapScreen
+      console.log('\n')
+      const { unmount: unmountRecap } = render(
+        React.createElement(RecapScreen, {
+          stats: recapStats,
+          year: targetYear,
+          noAnimation: options.noAnimation || false,
+          onSave: async (stats, year) => {
+            try {
+              const txtPath = await saveRecapToFile(stats, year)
+              const jsonPath = await saveRecapAsJSON(stats, year)
+              console.log(chalk.green(`\n✅ Recap saved to:`))
+              console.log(chalk.cyan(`   ${txtPath}`))
+              console.log(chalk.cyan(`   ${jsonPath}\n`))
+            } catch (error) {
+              console.error(
+                chalk.red(`\n❌ Error saving recap: ${error.message}\n`)
+              )
+            }
+          },
+          onQuit: () => {
+            unmountRecap()
+            process.exit(0)
+          },
+        }),
+        { exitOnCtrlC: true }
+      )
+
+      // Wait for user to exit (Ctrl+C) or let it finish
+      // The RecapScreen will handle its own lifecycle
+
+      // After RecapScreen finishes, show detailed statistics
+      // (This will only show if RecapScreen unmounts, which happens on final screen)
+      // For now, we'll show both - RecapScreen first, then detailed stats
 
       // Display statistics in organized sections
       console.log('\n')

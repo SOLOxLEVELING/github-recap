@@ -1,0 +1,27 @@
+╔═══════════════════════════════════════════════════════════╗
+║              🎉 YOUR 2025 GITHUB YEAR IN REVIEW 🎉        ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  📊 THE NUMBERS                                           ║
+║     • 185 commits across 19 repositories
+║     • 8-day longest streak (Dec 24 - Dec 31)
+║     • Most active: Sunday with 14 commits
+║                                                           ║
+║  🏆 TOP REPOSITORY                                        ║
+║     SOLOxLEVELING/my-finance - 39 commits (21.1%)
+║                                                           ║
+║  💬 YOUR CODING STYLE                                     ║
+║     • "feat" appeared 96 times in commits
+║     • Average 14.1 words per commit message
+║     • Most productive day: Nov 23, 2025 (14 commits)
+║                                                           ║
+║  🎯 TOP 5 REPOSITORIES                                    ║
+║     1. SOLOxLEVELING/my-finance           39 commits (21.1%) ║
+║     2. SOLOxLEVELING/easylaw              29 commits (15.7%) ║
+║     3. SOLOxLEVELING/my-habits            27 commits (14.6%) ║
+║     4. SOLOxLEVELING/recipy               24 commits (13%) ║
+║     5. SOLOxLEVELING/dotfiles             19 commits (10.3%) ║
+║                                                           ║
+║  ⭐ Impressive dedication! You shipped real work! 🔥
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝

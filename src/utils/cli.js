@@ -65,6 +65,11 @@ export function setupCLI() {
           .filter((repo) => repo.length > 0)
       }
     )
+    .option(
+      '--no-animation',
+      'Skip animated recap screens and show final summary immediately',
+      false
+    )
     .addHelpText(
       'after',
       `

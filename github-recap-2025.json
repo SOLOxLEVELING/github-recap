@@ -1,0 +1,149 @@
+{
+  "year": 2025,
+  "generatedAt": "2026-01-04T18:46:47.882Z",
+  "stats": {
+    "totalCommits": 185,
+    "totalRepos": 19,
+    "topRepos": [
+      {
+        "repo": "SOLOxLEVELING/my-finance",
+        "count": 39,
+        "percentage": 21.1
+      },
+      {
+        "repo": "SOLOxLEVELING/easylaw",
+        "count": 29,
+        "percentage": 15.7
+      },
+      {
+        "repo": "SOLOxLEVELING/my-habits",
+        "count": 27,
+        "percentage": 14.6
+      },
+      {
+        "repo": "SOLOxLEVELING/recipy",
+        "count": 24,
+        "percentage": 13
+      },
+      {
+        "repo": "SOLOxLEVELING/dotfiles",
+        "count": 19,
+        "percentage": 10.3
+      }
+    ],
+    "mostActiveDay": {
+      "date": "2025-11-23",
+      "count": 14,
+      "dayName": "Sunday"
+    },
+    "mostActiveMonth": {
+      "month": "2025-11",
+      "monthName": "November",
+      "count": 56
+    },
+    "longestStreak": {
+      "days": 8,
+      "startDate": "2025-12-24",
+      "endDate": "2025-12-31"
+    },
+    "commitsByDay": [
+      {
+        "day": "Monday",
+        "count": 22
+      },
+      {
+        "day": "Tuesday",
+        "count": 41
+      },
+      {
+        "day": "Wednesday",
+        "count": 26
+      },
+      {
+        "day": "Thursday",
+        "count": 22
+      },
+      {
+        "day": "Friday",
+        "count": 23
+      },
+      {
+        "day": "Saturday",
+        "count": 16
+      },
+      {
+        "day": "Sunday",
+        "count": 35
+      }
+    ],
+    "topWords": [
+      {
+        "word": "feat",
+        "count": 96
+      },
+      {
+        "word": "add",
+        "count": 61
+      },
+      {
+        "word": "implement",
+        "count": 45
+      },
+      {
+        "word": "update",
+        "count": 43
+      },
+      {
+        "word": "fix",
+        "count": 27
+      },
+      {
+        "word": "user",
+        "count": 26
+      },
+      {
+        "word": "api",
+        "count": 25
+      },
+      {
+        "word": "page",
+        "count": 22
+      },
+      {
+        "word": "management",
+        "count": 21
+      },
+      {
+        "word": "new",
+        "count": 21
+      }
+    ],
+    "messageStats": {
+      "avgLength": 14.1,
+      "shortestMsg": "Done",
+      "longestMsg": "----Work in progress----\n\nfeat: Enhance budget management and currency handli...",
+      "topFirstWords": [
+        {
+          "word": "feat",
+          "count": 83
+        },
+        {
+          "word": "update",
+          "count": 17
+        },
+        {
+          "word": "fix",
+          "count": 16
+        },
+        {
+          "word": "add",
+          "count": 10
+        },
+        {
+          "word": "initial",
+          "count": 9
+        }
+      ]
+    }
+  }
+}
