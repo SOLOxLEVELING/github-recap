@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial release of GitHub Recap CLI tool
+- **Interactive setup flow** for first-time users
+  - Beautiful welcome screen with step-by-step instructions
+  - Automatic token validation and configuration
+  - Saves token to `~/.github-recap` in home directory
 - Comprehensive GitHub commit statistics for any year
 - **Parallel fetching** with configurable batch size (default: 5 repos)
   - 4-5x performance improvement (8-10s vs 30-38s)
@@ -48,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Uses Octokit for GitHub API integration
 - Ink for terminal UI rendering
 - Commander for CLI argument parsing
+- Prompts for interactive user input
 - Smart batched parallel processing for optimal performance
+- Multi-location token loading (environment, home directory, .env)
 
 [1.0.0]: https://github.com/SOLOxLEVELING/github-recap/releases/tag/v1.0.0

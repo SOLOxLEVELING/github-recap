@@ -19,44 +19,46 @@
 - 💾 **Export Options** - Save to text or JSON format
 - 🎯 **Flexible Filtering** - Filter by repo, year, public/private status
 
-## 🚀 Installation
+## 🚀 Quick Start
 
-### Via npm (Recommended)
+### Installation
 
 ```bash
 npm install -g github-recap
 ```
 
-### Via Git Clone
+### First Run
 
 ```bash
-git clone https://github.com/SOLOxLEVELING/github-recap.git
-cd github-recap
-npm install
+github-recap
 ```
 
-## 🔑 Setup GitHub Token
+**That's it!** 🎉 The tool will automatically guide you through a simple setup:
 
-1. Go to: https://github.com/settings/tokens
-2. Click **"Generate new token (classic)"**
-3. Select scopes:
-   - ✅ `repo` (Full control of private repositories)
-   - ✅ `read:user` (Read user profile data)
-4. Generate token and copy it
-5. Create `.env` file in your home directory or project root:
+1. **Welcome screen** with clear instructions
+2. **Step-by-step guide** to create a GitHub token
+3. **Paste your token** (hidden input for security)
+4. **Automatic validation** and configuration
+5. **Start analyzing** your GitHub activity immediately!
+
+The setup takes less than 2 minutes and you only need to do it once.
+
+### Manual Setup (Optional)
+
+If you prefer to configure manually:
 
 ```bash
-# For npm global install (recommended)
-echo "GITHUB_TOKEN=ghp_your_token_here" > ~/.github-recap.env
-
-# OR for git clone
-cp .env.example .env
-# Then edit .env and add: GITHUB_TOKEN=ghp_your_token_here
+# Create config file in your home directory
+echo "GITHUB_TOKEN=ghp_your_token_here" > ~/.github-recap
 ```
+
+**Get your token:**
+1. Visit: https://github.com/settings/tokens/new
+2. Click "Generate new token (classic)"
+3. Select scopes: `repo` and `read:user`
+4. Copy the token and save it to `~/.github-recap`
 
 ## 💻 Usage
-
-### If installed via npm:
 
 ```bash
 # View your 2025 recap
@@ -70,22 +72,6 @@ github-recap --repo my-project
 
 # Force refresh cache
 github-recap --refresh
-
-# Clear cache
-github-recap --clear-cache
-```
-
-### If cloned from git:
-
-```bash
-# View your 2025 recap
-node src/index.js
-
-# Specific year
-node src/index.js --year 2024
-
-# Single repository
-node src/index.js --repo my-project
 ```
 
 ## 📊 What You'll See
@@ -310,13 +296,14 @@ Contributions are welcome! Here's how you can help:
 
 ## 📝 Troubleshooting
 
-### "Authentication failed"
-- Verify your `.env` file exists and contains valid token
-- Check token has `repo` and `read:user` scopes
-- Ensure token hasn't expired
+### "Authentication failed" or "No token found"
+- Run the interactive setup: `github-recap setup`
+- Or manually check your token in `~/.github-recap`
+- Ensure token has `repo` and `read:user` scopes
+- Verify token hasn't expired
 
 ### "Rate limit exceeded"
-- Reduce batch size: `--batch-size 3`
+- Reduce batch size: `github-recap --batch-size 3`
 - Wait for rate limit to reset (check: https://api.github.com/rate_limit)
 - Use cache: remove `--refresh` flag
 
@@ -326,9 +313,13 @@ Contributions are welcome! Here's how you can help:
 - Try with `--public-only` to test
 
 ### Cache issues
-- Clear cache: `github-recap --clear-cache` (or `node src/index.js --clear-cache`)
-- Force refresh: `github-recap --refresh` (or `node src/index.js --refresh`)
-- Check `.cache/` directory permissions
+- Clear cache: `github-recap --clear-cache`
+- Force refresh: `github-recap --refresh`
+- Check `~/.github-recap` file permissions
+
+### First-time setup
+- Run: `github-recap setup` to reconfigure your token
+- The tool will guide you through the process step-by-step
 
 ## 📄 License
 
