@@ -1,7 +1,7 @@
 {
   "name": "github-recap",
   "version": "1.0.0",
-  "description": "Beautiful terminal-based GitHub year in review",
+  "description": "Beautiful terminal-based GitHub year in review - like Spotify Wrapped for your code",
   "main": "src/index.js",
   "type": "module",
   "bin": {
@@ -10,9 +10,36 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "github",
+    "cli",
+    "recap",
+    "statistics",
+    "year-in-review",
+    "spotify-wrapped",
+    "terminal",
+    "commits",
+    "git",
+    "developer-tools"
+  ],
+  "author": "SOLOxLEVELING",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SOLOxLEVELING/github-recap.git"
+  },
+  "homepage": "https://github.com/SOLOxLEVELING/github-recap#readme",
+  "bugs": {
+    "url": "https://github.com/SOLOxLEVELING/github-recap/issues"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "boxen": "^8.0.1",
     "chalk": "^5.6.2",
@@ -22,6 +49,7 @@
     "figlet": "^1.9.4",
     "ink": "^6.6.0",
     "ink-spinner": "^5.0.0",
-    "octokit": "^5.0.5"
+    "octokit": "^5.0.5",
+    "prompts": "^2.4.2"
   }
 }

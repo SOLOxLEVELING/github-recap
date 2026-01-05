@@ -1,18 +1,7 @@
 /**
  * Data Collector Orchestrator
  *
- * Coordinates the collection of all GitHub data by calling fetchRepos and fetchCommits.
- * Aggregates data from multiple sources, handles pagination, filters data by date range
- * (current year), and structures the collected data for statistical analysis.
- *
- * How Ink's React components work in terminal:
- * - Ink is a React renderer for CLI applications
- * - Instead of rendering to DOM, it renders to terminal/console
- * - Components update in real-time using React's state management
- * - We use useState and useEffect hooks just like in web React
- * - The render() function from Ink displays the component in the terminal
- * - Components re-render when state changes, updating the terminal output
- * - This allows for animated spinners, progress bars, and live updates
+ * Coordinates collection of GitHub data with parallel fetching and smart caching.
  */
 
 import React, { useState, useEffect } from 'react'
@@ -33,7 +22,6 @@ import { testAuthentication } from '../auth/githubAuth.js'
  * Loading Spinner Component
  *
  * Displays real-time progress while collecting commits from multiple repositories.
- * Uses Ink's React components to create an animated, updating terminal UI.
  *
  * @param {Object} props
  * @param {string} props.currentRepo - Name of the repository currently being processed
@@ -79,24 +67,7 @@ function LoadingSpinner({ currentRepo, processedCount, totalCount, allCommits })
 }
 
 /**
- * Collects commits from all repositories for a given year.
- *
- * Data aggregation pattern:
- * - We fetch all repositories first (with filtering options)
- * - Then iterate through each repository sequentially
- * - For each repo, we fetch commits and add them to a master array
- * - This creates a flat array of all commits from all repos
- * - Each commit object includes the repo name for reference
- * - This pattern allows us to analyze commits across all repos together
- *
- * Why we catch errors per repo instead of stopping:
- * - Some repos might be empty (no commits in the year)
- * - Some repos might have access issues (private repos, permissions)
- * - Some repos might be archived or deleted
- * - If one repo fails, we don't want to lose data from all other repos
- * - This makes the tool more resilient and user-friendly
- * - We log warnings for failed repos but continue processing
- * - The user gets partial results instead of complete failure
+ * Collects commits from all repositories for a given year using batched parallel processing.
  *
  * @param {Object} options - Collection options
  * @param {number} options.year - Year to fetch commits for
@@ -185,14 +156,11 @@ export async function collectAllCommits(options) {
   )
 
   try {
-
-    // Step 1: Fetch all repositories (or use provided repo list)
+    // Fetch repositories
     let repos
     if (repoList && repoList.length > 0) {
-      // Use provided repo list (e.g., when --repo is specified)
       repos = repoList
     } else {
-      // Fetch all repos with filtering options
       repos = await fetchAllRepos({
         publicOnly,
         excludeRepos,
@@ -209,58 +177,46 @@ export async function collectAllCommits(options) {
       return []
     }
 
-    // Step 2: Collect commits from all repositories using batched parallel processing
+    // Collect commits using batched parallel processing
     const allCommitsArray = []
     
-    // Configure batch size (default: 5 repos per batch to avoid rate limits)
     const BATCH_SIZE = options.batchSize || 5
     
-    // Split repos into batches for parallel processing
     const batches = []
     for (let i = 0; i < repos.length; i += BATCH_SIZE) {
       batches.push(repos.slice(i, i + BATCH_SIZE))
     }
 
-    // Process batches sequentially, but repos within each batch in parallel
     for (const [batchIndex, batch] of batches.entries()) {
       const batchStart = batchIndex * BATCH_SIZE + 1
       const batchEnd = Math.min(batchStart + batch.length - 1, repos.length)
       
-      // Update state to show batch progress
       state.currentRepo = `Batch ${batchIndex + 1}/${batches.length} (repos ${batchStart}-${batchEnd} of ${repos.length})`
       state.processedCount = batchStart - 1
 
-      // Create promises for all repos in this batch
       const batchPromises = batch.map((repo) =>
         fetchCommitsForRepo(repo.full_name, year)
           .catch((error) => {
-            // Error handling per repository:
-            // - Don't stop the batch if one repo fails
-            // - Log a warning but continue with other repos
-            // - Return empty array so Promise.all() doesn't fail
             console.error(
               chalk.yellow(
                 `\n⚠️  Warning: Could not fetch commits for ${repo.full_name}: ${error.message}`
               )
             )
-            return [] // Return empty array on error
+            return []
           })
       )
 
-      // Wait for all repos in this batch to complete
       const batchResults = await Promise.all(batchPromises)
 
-      // Add all commits from this batch to master array
       batchResults.forEach((commits) => {
         allCommitsArray.push(...commits)
       })
 
-      // Update state with progress
       state.processedCount = batchEnd
       state.allCommits = allCommitsArray.length
     }
 
-    // Step 3: Save to cache if username is available
+    // Save to cache
     if (currentUsername && !repoList) {
       try {
         await saveToCache(currentUsername, year, {
@@ -271,12 +227,10 @@ export async function collectAllCommits(options) {
           console.log(chalk.green('💾 Data cached for future use\n'))
         }
       } catch (cacheError) {
-        // Cache save failed, but don't fail the entire operation
-        // Error already logged in saveToCache
+        // Cache save failed, continue anyway
       }
     }
 
-    // Step 4: Unmount the loading spinner
     unmount()
 
     return allCommitsArray

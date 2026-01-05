@@ -2,73 +2,42 @@
  * GitHub Authentication Module
  *
  * Handles authentication with GitHub's API using personal access tokens.
- * Validates token presence and format, sets up Octokit client with proper
- * authentication headers, and provides error handling for authentication failures.
  */
 
 import dotenv from 'dotenv'
 import { Octokit } from 'octokit'
+import { loadToken } from '../setup/interactiveSetup.js'
 
-// Load environment variables from .env file
-// Why environment variables?
-// - Security: Keeps sensitive tokens out of source code
-// - Flexibility: Different tokens for different environments (dev, prod)
-// - Best practice: Never commit secrets to version control
-// - Easy configuration: Users can set up their token without modifying code
 dotenv.config()
 
 /**
  * Creates and returns an authenticated Octokit client instance.
  *
- * What is Octokit?
- * - Octokit is the official GitHub API client library for JavaScript/Node.js
- * - It provides a clean, type-safe interface to interact with GitHub's REST and GraphQL APIs
- * - Handles authentication, rate limiting, pagination, and error handling automatically
- * - Supports both REST API v3 and GraphQL API v4
- *
- * How authentication works:
- * - GitHub uses Personal Access Tokens (PATs) for API authentication
- * - The token is passed in the Authorization header as: "token YOUR_TOKEN"
- * - Octokit automatically handles this when you pass the token to the constructor
- * - The token must have appropriate scopes (permissions) to access the data you need
- *
  * @returns {Octokit} An authenticated Octokit instance ready to make API calls
- * @throws {Error} If GITHUB_TOKEN is not set in environment variables
+ * @throws {Error} If GITHUB_TOKEN is not set
  */
 export function getAuthenticatedClient() {
-  // Load the GitHub token from environment variables
-  const token = process.env.GITHUB_TOKEN
+  const token = loadToken()
 
-  // Validate that the token exists
   if (!token) {
     throw new Error(
       '❌ GITHUB_TOKEN is not set!\n\n' +
-        'Please create a .env file in the project root with:\n' +
-        'GITHUB_TOKEN=your_github_personal_access_token_here\n\n' +
-        'To create a token:\n' +
-        '1. Go to https://github.com/settings/tokens\n' +
-        '2. Click "Generate new token (classic)"\n' +
-        '3. Select scopes: repo, read:user\n' +
-        '4. Copy the token and add it to your .env file'
+        'Run: github-recap setup\n' +
+        'Or manually create ~/.github-recap with:\n' +
+        'GITHUB_TOKEN=your_token_here'
     )
   }
 
-  // Validate token format (GitHub tokens are typically 40+ characters)
   if (token.length < 20) {
     throw new Error(
       '❌ Invalid GITHUB_TOKEN format!\n\n' +
         'GitHub tokens are typically 40+ characters long.\n' +
-        'Please check your .env file and ensure the token is correct.'
+        'Please check your token and try again.'
     )
   }
 
   try {
-    // Create and return an authenticated Octokit instance
-    // The auth option automatically adds the token to all API requests
-    const octokit = new Octokit({
-      auth: token,
-    })
-
+    const octokit = new Octokit({ auth: token })
     return octokit
   } catch (error) {
     throw new Error(
@@ -106,16 +75,15 @@ export async function testAuthentication() {
       throw new Error(
         '❌ Authentication failed!\n\n' +
           'Your GITHUB_TOKEN is invalid or expired.\n' +
-          'Please generate a new token at https://github.com/settings/tokens\n' +
-          'and update your .env file.'
+          'Run: github-recap setup\n' +
+          'Or visit: https://github.com/settings/tokens'
       )
     } else if (error.status === 403) {
       throw new Error(
         '❌ Access forbidden!\n\n' +
           'Your GITHUB_TOKEN does not have the required permissions.\n' +
-          'Please ensure your token has the following scopes:\n' +
-          '- repo (for accessing repository data)\n' +
-          '- read:user (for reading user information)'
+          'Required scopes: repo, read:user\n' +
+          'Run: github-recap setup'
       )
     } else if (error.message.includes('GITHUB_TOKEN')) {
       // Re-throw our custom token errors

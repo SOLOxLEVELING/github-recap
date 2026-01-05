@@ -2,7 +2,8 @@
 
 > Beautiful terminal-based GitHub year in review - like Spotify Wrapped for your code!
 
-![GitHub Recap](https://img.shields.io/badge/GitHub-Recap-blue?style=for-the-badge&logo=github)
+[![npm version](https://img.shields.io/npm/v/github-recap.svg?style=for-the-badge)](https://www.npmjs.com/package/github-recap)
+[![npm downloads](https://img.shields.io/npm/dm/github-recap.svg?style=for-the-badge)](https://www.npmjs.com/package/github-recap)
 ![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=for-the-badge&logo=node.js)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
@@ -18,9 +19,15 @@
 - 💾 **Export Options** - Save to text or JSON format
 - 🎯 **Flexible Filtering** - Filter by repo, year, public/private status
 
-## 🚀 Quick Start
+## 🚀 Installation
 
-### Installation
+### Via npm (Recommended)
+
+```bash
+npm install -g github-recap
+```
+
+### Via Git Clone
 
 ```bash
 git clone https://github.com/SOLOxLEVELING/github-recap.git
@@ -28,7 +35,7 @@ cd github-recap
 npm install
 ```
 
-### Setup GitHub Token
+## 🔑 Setup GitHub Token
 
 1. Go to: https://github.com/settings/tokens
 2. Click **"Generate new token (classic)"**
@@ -36,19 +43,39 @@ npm install
    - ✅ `repo` (Full control of private repositories)
    - ✅ `read:user` (Read user profile data)
 4. Generate token and copy it
-5. Create `.env` file in project root:
+5. Create `.env` file in your home directory or project root:
 
 ```bash
+# For npm global install (recommended)
+echo "GITHUB_TOKEN=ghp_your_token_here" > ~/.github-recap.env
+
+# OR for git clone
 cp .env.example .env
+# Then edit .env and add: GITHUB_TOKEN=ghp_your_token_here
 ```
 
-6. Edit `.env` and add your token:
+## 💻 Usage
 
-```env
-GITHUB_TOKEN=ghp_your_token_here
+### If installed via npm:
+
+```bash
+# View your 2025 recap
+github-recap
+
+# Specific year
+github-recap --year 2024
+
+# Single repository
+github-recap --repo my-project
+
+# Force refresh cache
+github-recap --refresh
+
+# Clear cache
+github-recap --clear-cache
 ```
 
-### Basic Usage
+### If cloned from git:
 
 ```bash
 # View your 2025 recap
@@ -59,12 +86,6 @@ node src/index.js --year 2024
 
 # Single repository
 node src/index.js --repo my-project
-
-# Force refresh cache
-node src/index.js --refresh
-
-# Clear cache
-node src/index.js --clear-cache
 ```
 
 ## 📊 What You'll See
@@ -139,34 +160,40 @@ Cache expires after 24 hours by default (configurable with `--cache-max-age`).
 
 ### Examples
 
+**Using npm global install:**
+
 ```bash
 # View 2024 recap
-node src/index.js --year 2024
+github-recap --year 2024
 
 # Analyze specific repository
-node src/index.js --repo SOLOxLEVELING/github-recap
+github-recap --repo SOLOxLEVELING/github-recap
 
 # Only public repos for 2023
-node src/index.js --year 2023 --public-only
+github-recap --year 2023 --public-only
 
 # Exclude test repos
-node src/index.js --exclude "test-repo,demo-repo"
+github-recap --exclude "test-repo,demo-repo"
 
 # Force fresh data
-node src/index.js --refresh
+github-recap --refresh
 
 # Use cache if less than 12 hours old
-node src/index.js --cache-max-age 12
+github-recap --cache-max-age 12
 
 # Fetch 10 repos in parallel (faster but more API calls)
-node src/index.js --batch-size 10
+github-recap --batch-size 10
 
 # Smaller batch size for rate limit safety
-node src/index.js --batch-size 3 --refresh
+github-recap --batch-size 3 --refresh
 
 # Skip animations for quick summary
-node src/index.js --no-animation
+github-recap --no-animation
 ```
+
+**Using git clone:**
+
+Replace `github-recap` with `node src/index.js` in all examples above.
 
 ## 🛠️ Tech Stack
 
@@ -299,8 +326,8 @@ Contributions are welcome! Here's how you can help:
 - Try with `--public-only` to test
 
 ### Cache issues
-- Clear cache: `node src/index.js --clear-cache`
-- Force refresh: `node src/index.js --refresh`
+- Clear cache: `github-recap --clear-cache` (or `node src/index.js --clear-cache`)
+- Force refresh: `github-recap --refresh` (or `node src/index.js --refresh`)
 - Check `.cache/` directory permissions
 
 ## 📄 License

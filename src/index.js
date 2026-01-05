@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Main entry point for the GitHub Recap CLI tool.
+ * GitHub Recap - Main Entry Point
  *
- * This file initializes the CLI application, sets up command-line argument parsing,
- * loads environment variables, and orchestrates the flow of data collection,
- * statistics calculation, and UI rendering to display the user's GitHub year in review.
+ * Beautiful terminal-based GitHub year in review CLI tool.
  */
 
 import React from 'react'
@@ -30,13 +28,13 @@ import {
   getLanguageBreakdown,
 } from './stats/statsCalculator.js'
 import { getTopWords, getCommitMessageStats } from './stats/messageAnalyzer.js'
+import { hasValidToken, runInteractiveSetup } from './setup/interactiveSetup.js'
 
 // Parse CLI options
 const options = parseOptions()
 
 /**
  * Main function that runs the GitHub Recap application.
- * Tests authentication and displays success/error messages.
  */
 async function main() {
   try {
@@ -60,6 +58,15 @@ async function main() {
         process.exit(1)
       }
       process.exit(0)
+    }
+
+    // Check if token exists, if not run interactive setup
+    if (!hasValidToken()) {
+      const setupSuccess = await runInteractiveSetup()
+      if (!setupSuccess) {
+        process.exit(1)
+      }
+      console.log() // Add spacing
     }
 
     // Display welcome message
@@ -110,20 +117,14 @@ async function main() {
     /**
      * Smart repository matching function
      *
-     * Matching strategy (in order of priority):
-     * 1. Exact full_name match: "username/repo-name" matches exactly
-     * 2. Exact repo name match: "repo-name" matches any repo with that exact name
-     * 3. Partial match: "port" matches "portfolio", "portfolio-site", etc.
-     *
-     * If multiple repos match a partial search, we return all matches
-     * so the user can be prompted to be more specific.
+     * Matches repositories by full name, exact name, or partial name.
      *
      * @param {Array} allRepos - Array of all available repositories
      * @param {string} searchPattern - The pattern to search for
      * @returns {Object} { match: repo | null, matches: repo[] }
      */
     function findRepository(allRepos, searchPattern) {
-      // 1. Try exact full_name match (highest priority)
+      // Try exact full_name match
       const exactFullNameMatch = allRepos.find(
         (repo) => repo.full_name === searchPattern
       )
@@ -131,7 +132,7 @@ async function main() {
         return { match: exactFullNameMatch, matches: [exactFullNameMatch] }
       }
 
-      // 2. Try exact repo name match (second priority)
+      // Try exact repo name match
       const exactNameMatches = allRepos.filter(
         (repo) => repo.name === searchPattern
       )
@@ -139,11 +140,10 @@ async function main() {
         return { match: exactNameMatches[0], matches: exactNameMatches }
       }
       if (exactNameMatches.length > 1) {
-        // Multiple repos with same name - return all for user to choose
         return { match: null, matches: exactNameMatches }
       }
 
-      // 3. Try partial match (lowest priority)
+      // Try partial match
       const partialMatches = allRepos.filter(
         (repo) =>
           repo.full_name.includes(searchPattern) ||
@@ -154,11 +154,9 @@ async function main() {
         return { match: partialMatches[0], matches: partialMatches }
       }
       if (partialMatches.length > 1) {
-        // Multiple partial matches - return all for user to choose
         return { match: null, matches: partialMatches }
       }
 
-      // No match found
       return { match: null, matches: [] }
     }
 
@@ -174,11 +172,9 @@ async function main() {
         excludeRepos: options.exclude || [],
       })
 
-      // Use smart matching to find the repository
       const { match, matches } = findRepository(allRepos, options.repo)
 
       if (match) {
-        // Single match found - use collectAllCommits for this one repo
         targetRepo = match
         repos = [targetRepo]
         console.log(
@@ -187,20 +183,17 @@ async function main() {
           )
         )
 
-        // Collect commits using the data collector (shows nice progress)
-        // Pass the single repo directly to avoid fetching all repos
         const repoCommits = await collectAllCommits({
           year: targetYear,
-          publicOnly: false, // Ignored when repoList is provided
-          excludeRepos: [], // Ignored when repoList is provided
-          repoList: [targetRepo], // Only process this one repo
+          publicOnly: false,
+          excludeRepos: [],
+          repoList: [targetRepo],
           noCache: options.noCache || options.refresh || false,
           cacheMaxAge: options.cacheMaxAge || 24,
           batchSize: options.batchSize || 5,
           username: username,
         })
 
-        // Calculate statistics for single repo
         console.log(chalk.yellow('\n📊 Calculating statistics...\n'))
 
         const repoLanguages = {}
