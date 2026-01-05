@@ -21,6 +21,13 @@ import Spinner from 'ink-spinner'
 import chalk from 'chalk'
 import { fetchAllRepos } from './fetchRepos.js'
 import { fetchCommitsForRepo } from './fetchCommits.js'
+import {
+  isCacheValid,
+  loadFromCache,
+  saveToCache,
+  formatCacheAge,
+} from '../cache/cacheManager.js'
+import { testAuthentication } from '../auth/githubAuth.js'
 
 /**
  * Loading Spinner Component
@@ -96,10 +103,48 @@ function LoadingSpinner({ currentRepo, processedCount, totalCount, allCommits })
  * @param {boolean} options.publicOnly - Only include public repositories
  * @param {string[]} options.excludeRepos - Repositories to exclude
  * @param {Array} options.repoList - Optional: specific repos to process (skips fetchAllRepos)
+ * @param {boolean} options.noCache - Skip cache, always fetch fresh
+ * @param {number} options.cacheMaxAge - Cache expiration in hours (default: 24)
+ * @param {string} options.username - GitHub username (for cache key)
  * @returns {Promise<Array>} Array of all commits from all repositories
  */
 export async function collectAllCommits(options) {
-  const { year, publicOnly = false, excludeRepos = [], repoList = null } = options
+  const {
+    year,
+    publicOnly = false,
+    excludeRepos = [],
+    repoList = null,
+    noCache = false,
+    cacheMaxAge = 24,
+    username = null,
+  } = options
+
+  // Check cache BEFORE rendering progress component (for faster response)
+  let currentUsername = username
+  if (currentUsername && !noCache && !repoList) {
+    const cacheCheck = await isCacheValid(currentUsername, year, cacheMaxAge)
+    
+    if (cacheCheck.valid) {
+      // Load from cache
+      const cachedData = await loadFromCache(currentUsername, year)
+      
+      if (cachedData && cachedData.commits) {
+        const ageStr = formatCacheAge(cacheCheck.age)
+        console.log(
+          chalk.green(`📦 Using cached data (fetched ${ageStr})`)
+        )
+        console.log(
+          chalk.gray('   Run with --refresh to fetch new data\n')
+        )
+        return cachedData.commits
+      }
+    }
+  }
+
+  // Cache invalid or noCache set - fetch fresh data
+  if (currentUsername && !noCache && !repoList) {
+    console.log(chalk.yellow('🔄 Fetching fresh data from GitHub...\n'))
+  }
 
   // Shared state object that the component will read from
   // This allows us to update the component from outside React's render cycle
@@ -139,6 +184,7 @@ export async function collectAllCommits(options) {
   )
 
   try {
+
     // Step 1: Fetch all repositories (or use provided repo list)
     let repos
     if (repoList && repoList.length > 0) {
@@ -200,7 +246,23 @@ export async function collectAllCommits(options) {
       }
     }
 
-    // Step 3: Unmount the loading spinner
+    // Step 3: Save to cache if username is available
+    if (currentUsername && !repoList) {
+      try {
+        await saveToCache(currentUsername, year, {
+          repos,
+          commits: allCommitsArray,
+        })
+        if (!noCache) {
+          console.log(chalk.green('💾 Data cached for future use\n'))
+        }
+      } catch (cacheError) {
+        // Cache save failed, but don't fail the entire operation
+        // Error already logged in saveToCache
+      }
+    }
+
+    // Step 4: Unmount the loading spinner
     unmount()
 
     return allCommitsArray

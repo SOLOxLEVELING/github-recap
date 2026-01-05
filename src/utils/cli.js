@@ -70,6 +70,32 @@ export function setupCLI() {
       'Skip animated recap screens and show final summary immediately',
       false
     )
+    .option(
+      '--no-cache',
+      'Skip cache, always fetch fresh data from GitHub',
+      false
+    )
+    .option(
+      '--refresh',
+      'Alias for --no-cache (fetch fresh data)',
+      false
+    )
+    .option(
+      '--clear-cache',
+      'Clear cache files and exit',
+      false
+    )
+    .option(
+      '--cache-max-age <hours>',
+      'Set cache expiration in hours (default: 24)',
+      (value) => {
+        const hours = parseFloat(value)
+        if (isNaN(hours) || hours < 0) {
+          throw new Error('Cache max age must be a positive number')
+        }
+        return hours
+      }
+    )
     .addHelpText(
       'after',
       `
@@ -95,9 +121,23 @@ Examples:
   $ github-recap --year 2023 --public-only --exclude "test-repo,demo-repo"
   Fetch commits from public repos (excluding test-repo and demo-repo) for 2023
 
+  $ github-recap --refresh
+  Fetch fresh data from GitHub (skip cache)
+
+  $ github-recap --no-cache
+  Same as --refresh (skip cache)
+
+  $ github-recap --clear-cache
+  Clear all cached data and exit
+
+  $ github-recap --cache-max-age 12
+  Use cache if less than 12 hours old (default: 24 hours)
+
 Note:
   - When --repo is specified, --public-only and --exclude are ignored
   - Repository names in --exclude should match the full_name format (username/repo-name)
+  - Cache is automatically used if data is less than 24 hours old (configurable)
+  - Use --refresh or --no-cache to always fetch fresh data
 `
     )
 

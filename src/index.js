@@ -19,6 +19,7 @@ import { collectAllCommits } from './data/dataCollector.js'
 import { parseOptions } from './utils/cli.js'
 import { RecapScreen } from './ui/RecapScreen.js'
 import { saveRecapToFile, saveRecapAsJSON } from './utils/saveRecap.js'
+import { clearCache } from './cache/cacheManager.js'
 import {
   calculateTotalCommits,
   getTopRepositories,
@@ -39,6 +40,28 @@ const options = parseOptions()
  */
 async function main() {
   try {
+    // Handle --clear-cache flag
+    if (options.clearCache) {
+      console.log(chalk.yellow('🗑️  Clearing cache...\n'))
+      try {
+        const deletedFiles = await clearCache()
+        if (deletedFiles.length > 0) {
+          console.log(
+            chalk.green(`✅ Cleared ${deletedFiles.length} cache file(s)\n`)
+          )
+          deletedFiles.forEach((file) => {
+            console.log(chalk.gray(`   ${file}`))
+          })
+        } else {
+          console.log(chalk.yellow('   No cache files found\n'))
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error clearing cache: ${error.message}\n`))
+        process.exit(1)
+      }
+      process.exit(0)
+    }
+
     // Display welcome message
     console.log(chalk.cyan.bold('\n🎉 GitHub Recap - Year in Review\n'))
 
@@ -171,6 +194,9 @@ async function main() {
           publicOnly: false, // Ignored when repoList is provided
           excludeRepos: [], // Ignored when repoList is provided
           repoList: [targetRepo], // Only process this one repo
+          noCache: options.noCache || options.refresh || false,
+          cacheMaxAge: options.cacheMaxAge || 24,
+          username: username,
         })
 
         // Calculate statistics for single repo
@@ -468,6 +494,9 @@ async function main() {
         year: targetYear,
         publicOnly: options.publicOnly || false,
         excludeRepos: options.exclude || [],
+        noCache: options.noCache || options.refresh || false,
+        cacheMaxAge: options.cacheMaxAge || 24,
+        username: username,
       })
 
       // Get repos list for statistics (we need repo metadata for language breakdown)
