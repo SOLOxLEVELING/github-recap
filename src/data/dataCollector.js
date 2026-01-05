@@ -105,6 +105,7 @@ function LoadingSpinner({ currentRepo, processedCount, totalCount, allCommits })
  * @param {Array} options.repoList - Optional: specific repos to process (skips fetchAllRepos)
  * @param {boolean} options.noCache - Skip cache, always fetch fresh
  * @param {number} options.cacheMaxAge - Cache expiration in hours (default: 24)
+ * @param {number} options.batchSize - Number of repos to fetch in parallel (default: 5)
  * @param {string} options.username - GitHub username (for cache key)
  * @returns {Promise<Array>} Array of all commits from all repositories
  */
@@ -208,42 +209,55 @@ export async function collectAllCommits(options) {
       return []
     }
 
-    // Step 2: Collect commits from all repositories
+    // Step 2: Collect commits from all repositories using batched parallel processing
     const allCommitsArray = []
+    
+    // Configure batch size (default: 5 repos per batch to avoid rate limits)
+    const BATCH_SIZE = options.batchSize || 5
+    
+    // Split repos into batches for parallel processing
+    const batches = []
+    for (let i = 0; i < repos.length; i += BATCH_SIZE) {
+      batches.push(repos.slice(i, i + BATCH_SIZE))
+    }
 
-    for (let i = 0; i < repos.length; i++) {
-      const repo = repos[i]
-      const repoName = repo.full_name
+    // Process batches sequentially, but repos within each batch in parallel
+    for (const [batchIndex, batch] of batches.entries()) {
+      const batchStart = batchIndex * BATCH_SIZE + 1
+      const batchEnd = Math.min(batchStart + batch.length - 1, repos.length)
+      
+      // Update state to show batch progress
+      state.currentRepo = `Batch ${batchIndex + 1}/${batches.length} (repos ${batchStart}-${batchEnd} of ${repos.length})`
+      state.processedCount = batchStart - 1
 
-      // Update state for spinner
-      state.currentRepo = repoName
-      state.processedCount = i
+      // Create promises for all repos in this batch
+      const batchPromises = batch.map((repo) =>
+        fetchCommitsForRepo(repo.full_name, year)
+          .catch((error) => {
+            // Error handling per repository:
+            // - Don't stop the batch if one repo fails
+            // - Log a warning but continue with other repos
+            // - Return empty array so Promise.all() doesn't fail
+            console.error(
+              chalk.yellow(
+                `\n⚠️  Warning: Could not fetch commits for ${repo.full_name}: ${error.message}`
+              )
+            )
+            return [] // Return empty array on error
+          })
+      )
 
-      try {
-        // Fetch commits for this repository
-        const commits = await fetchCommitsForRepo(repoName, year)
+      // Wait for all repos in this batch to complete
+      const batchResults = await Promise.all(batchPromises)
 
-        // Add commits to master array
-        // Each commit already has the repo name in it (from fetchCommitsForRepo)
+      // Add all commits from this batch to master array
+      batchResults.forEach((commits) => {
         allCommitsArray.push(...commits)
+      })
 
-        // Update state with new commit count
-        state.processedCount = i + 1
-        state.allCommits = allCommitsArray.length
-      } catch (error) {
-        // Error handling per repository:
-        // - Don't stop the entire process if one repo fails
-        // - Log a warning but continue with other repos
-        // - This makes the tool resilient to individual repo issues
-        console.error(
-          chalk.yellow(
-            `\n⚠️  Warning: Could not fetch commits for ${repoName}: ${error.message}`
-          )
-        )
-        // Continue to next repo
-        state.processedCount = i + 1
-        state.allCommits = allCommitsArray.length
-      }
+      // Update state with progress
+      state.processedCount = batchEnd
+      state.allCommits = allCommitsArray.length
     }
 
     // Step 3: Save to cache if username is available

@@ -96,6 +96,17 @@ export function setupCLI() {
         return hours
       }
     )
+    .option(
+      '--batch-size <n>',
+      'Number of repos to fetch in parallel (default: 5)',
+      (value) => {
+        const size = parseInt(value, 10)
+        if (isNaN(size) || size < 1) {
+          throw new Error('Batch size must be a positive integer')
+        }
+        return size
+      }
+    )
     .addHelpText(
       'after',
       `
@@ -133,11 +144,18 @@ Examples:
   $ github-recap --cache-max-age 12
   Use cache if less than 12 hours old (default: 24 hours)
 
+  $ github-recap --batch-size 10
+  Fetch 10 repositories in parallel per batch (default: 5)
+
+  $ github-recap --batch-size 3 --refresh
+  Fetch fresh data with smaller batch size (slower but safer for rate limits)
+
 Note:
   - When --repo is specified, --public-only and --exclude are ignored
   - Repository names in --exclude should match the full_name format (username/repo-name)
   - Cache is automatically used if data is less than 24 hours old (configurable)
   - Use --refresh or --no-cache to always fetch fresh data
+  - Batch size of 5 is optimal for GitHub API rate limits (5000/hour)
 `
     )
 

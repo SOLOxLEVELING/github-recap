@@ -196,6 +196,7 @@ async function main() {
           repoList: [targetRepo], // Only process this one repo
           noCache: options.noCache || options.refresh || false,
           cacheMaxAge: options.cacheMaxAge || 24,
+          batchSize: options.batchSize || 5,
           username: username,
         })
 
@@ -496,6 +497,7 @@ async function main() {
         excludeRepos: options.exclude || [],
         noCache: options.noCache || options.refresh || false,
         cacheMaxAge: options.cacheMaxAge || 24,
+        batchSize: options.batchSize || 5,
         username: username,
       })
 
